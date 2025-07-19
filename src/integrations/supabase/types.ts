@@ -14,6 +14,124 @@ export type Database = {
   }
   public: {
     Tables: {
+      price_alerts: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean | null
+          product_id: string
+          target_price: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          product_id: string
+          target_price: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          product_id?: string
+          target_price?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "price_alerts_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      price_history: {
+        Row: {
+          affiliate_link: string | null
+          currency: string
+          id: string
+          in_stock: boolean | null
+          platform_name: string
+          platform_url: string
+          price: number
+          product_id: string
+          scraped_at: string
+        }
+        Insert: {
+          affiliate_link?: string | null
+          currency?: string
+          id?: string
+          in_stock?: boolean | null
+          platform_name: string
+          platform_url: string
+          price: number
+          product_id: string
+          scraped_at?: string
+        }
+        Update: {
+          affiliate_link?: string | null
+          currency?: string
+          id?: string
+          in_stock?: boolean | null
+          platform_name?: string
+          platform_url?: string
+          price?: number
+          product_id?: string
+          scraped_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "price_history_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          brand: string | null
+          category: string | null
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          original_url: string
+          product_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          brand?: string | null
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          original_url: string
+          product_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          brand?: string | null
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          original_url?: string
+          product_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

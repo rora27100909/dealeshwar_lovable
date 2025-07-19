@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import Dashboard from "@/components/Dashboard";
 import { LogOut } from "lucide-react";
 
 const Index = () => {
@@ -50,18 +51,8 @@ const Index = () => {
         </div>
       </header>
       
-      <main className="container mx-auto px-4 py-8">
-        <div className="text-center">
-          <h2 className="text-4xl font-bold mb-4">Smart Price Comparison Platform</h2>
-          <p className="text-xl text-muted-foreground mb-8">
-            Compare prices across platforms and get AI-powered buying recommendations
-          </p>
-          <div className="bg-card p-8 rounded-lg border">
-            <p className="text-muted-foreground">
-              Ready to build your price comparison features here!
-            </p>
-          </div>
-        </div>
+      <main>
+        <Dashboard />
       </main>
     </div>
   );
