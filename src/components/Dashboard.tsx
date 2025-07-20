@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { Search, TrendingDown, Bell, BarChart3 } from "lucide-react";
 
 const ProductUrlForm = () => {
@@ -16,26 +17,42 @@ const ProductUrlForm = () => {
     e.preventDefault();
     if (!url.trim()) return;
 
+    if (!isValidUrl(url)) {
+      toast({
+        title: "Invalid URL",
+        description: "Please enter a valid URL from a supported platform",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     
     try {
-      // TODO: Implement product scraping logic
-      console.log("Scraping product from URL:", url);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      toast({
-        title: "Product Added Successfully",
-        description: "We're now tracking this product across multiple platforms!"
+      const { data, error } = await supabase.functions.invoke('scrape-product', {
+        body: { 
+          url: url.trim(),
+          user_id: user?.id || 'temp-user-id'
+        }
       });
-      
-      setUrl("");
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast({
+          title: "Product Added Successfully",
+          description: `${data.product.product_name} is now being tracked!`,
+        });
+        setUrl("");
+      } else {
+        throw new Error(data.error || 'Failed to scrape product');
+      }
     } catch (error) {
+      console.error('Error adding product:', error);
       toast({
-        title: "Error",
-        description: "Failed to add product. Please try again.",
-        variant: "destructive"
+        title: "Error", 
+        description: error.message || "Failed to add product. Please try again.",
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -45,7 +62,7 @@ const ProductUrlForm = () => {
   const isValidUrl = (urlString: string) => {
     try {
       const url = new URL(urlString);
-      return ['amazon.in', 'amazon.com', 'flipkart.com', 'meesho.com', 'myntra.com', 'ajio.com'].some(
+      return ['amazon.in', 'amazon.com', 'flipkart.com', 'myntra.com', 'ajio.com', 'nykaa.com'].some(
         domain => url.hostname.includes(domain)
       );
     } catch {
