@@ -7,41 +7,39 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Search, TrendingDown, Bell, BarChart3 } from "lucide-react";
-
 const ProductUrlForm = () => {
   const [url, setUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { user } = useAuth();
-
+  const {
+    user
+  } = useAuth();
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!url.trim()) return;
-
     if (!isValidUrl(url)) {
       toast({
         title: "Invalid URL",
         description: "Please enter a valid URL from a supported platform",
-        variant: "destructive",
+        variant: "destructive"
       });
       return;
     }
-
     setIsLoading(true);
-    
     try {
-      const { data, error } = await supabase.functions.invoke('scrape-product', {
-        body: { 
+      const {
+        data,
+        error
+      } = await supabase.functions.invoke('scrape-product', {
+        body: {
           url: url.trim(),
           user_id: user?.id || 'temp-user-id'
         }
       });
-
       if (error) throw error;
-
       if (data.success) {
         toast({
           title: "Product Added Successfully",
-          description: `${data.product.product_name} is now being tracked!`,
+          description: `${data.product.product_name} is now being tracked!`
         });
         setUrl("");
       } else {
@@ -50,28 +48,23 @@ const ProductUrlForm = () => {
     } catch (error) {
       console.error('Error adding product:', error);
       toast({
-        title: "Error", 
+        title: "Error",
         description: error.message || "Failed to add product. Please try again.",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsLoading(false);
     }
   };
-
   const isValidUrl = (urlString: string) => {
     try {
       const url = new URL(urlString);
-      return ['amazon.in', 'amazon.com', 'flipkart.com', 'myntra.com', 'ajio.com', 'nykaa.com'].some(
-        domain => url.hostname.includes(domain)
-      );
+      return ['amazon.in', 'amazon.com', 'flipkart.com', 'myntra.com', 'ajio.com', 'nykaa.com'].some(domain => url.hostname.includes(domain));
     } catch {
       return false;
     }
   };
-
-  return (
-    <Card className="w-full max-w-2xl mx-auto">
+  return <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Search className="h-5 w-5" />
@@ -85,56 +78,36 @@ const ProductUrlForm = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="product-url">Product URL</Label>
-            <Input
-              id="product-url"
-              type="url"
-              placeholder="https://www.amazon.in/product/..."
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              required
-            />
-            {url && !isValidUrl(url) && (
-              <p className="text-sm text-destructive">
+            <Input id="product-url" type="url" placeholder="https://www.amazon.in/product/..." value={url} onChange={e => setUrl(e.target.value)} required />
+            {url && !isValidUrl(url) && <p className="text-sm text-destructive">
                 Please enter a valid URL from supported retailers
-              </p>
-            )}
+              </p>}
           </div>
-          <Button 
-            type="submit" 
-            className="w-full" 
-            disabled={isLoading || !isValidUrl(url)}
-          >
+          <Button type="submit" className="w-full" disabled={isLoading || !isValidUrl(url)}>
             {isLoading ? "Analyzing Product..." : "Start Tracking"}
           </Button>
         </form>
       </CardContent>
-    </Card>
-  );
+    </Card>;
 };
-
 const Dashboard = () => {
-  const { user } = useAuth();
-
-  const features = [
-    {
-      icon: TrendingDown,
-      title: "Price Tracking",
-      description: "Monitor prices across multiple platforms in real-time"
-    },
-    {
-      icon: Bell,
-      title: "Smart Alerts",
-      description: "Get notified when prices drop to your target"
-    },
-    {
-      icon: BarChart3,
-      title: "AI Insights",
-      description: "Get AI-powered buying recommendations based on price trends"
-    }
-  ];
-
-  return (
-    <div className="container mx-auto px-4 py-8 space-y-8">
+  const {
+    user
+  } = useAuth();
+  const features = [{
+    icon: TrendingDown,
+    title: "Price Tracking",
+    description: "Monitor prices across multiple platforms in real-time"
+  }, {
+    icon: Bell,
+    title: "Smart Alerts",
+    description: "Get notified when prices drop to your target"
+  }, {
+    icon: BarChart3,
+    title: "AI Insights",
+    description: "Get AI-powered buying recommendations based on price trends"
+  }];
+  return <div className="container mx-auto px-4 py-8 space-y-8">
       <div className="text-center space-y-4">
         <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
           Smart Price Comparison
@@ -147,8 +120,7 @@ const Dashboard = () => {
       <ProductUrlForm />
 
       <div className="grid md:grid-cols-3 gap-6">
-        {features.map((feature, index) => (
-          <Card key={index} className="text-center">
+        {features.map((feature, index) => <Card key={index} className="text-center">
             <CardHeader>
               <feature.icon className="h-8 w-8 mx-auto text-primary" />
               <CardTitle className="text-lg">{feature.title}</CardTitle>
@@ -156,29 +128,22 @@ const Dashboard = () => {
             <CardContent>
               <CardDescription>{feature.description}</CardDescription>
             </CardContent>
-          </Card>
-        ))}
+          </Card>)}
       </div>
 
       <Card className="bg-muted/50">
         <CardHeader>
           <CardTitle>Supported Platforms</CardTitle>
-          <CardDescription>
-            We track prices across these major Indian e-commerce platforms
-          </CardDescription>
+          <CardDescription>We track prices across major Indian e-commerce platforms</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-            {['Amazon', 'Flipkart', 'Meesho', 'Myntra', 'Ajio', 'More Soon'].map((platform) => (
-              <div key={platform} className="p-3 bg-background rounded-lg border">
+            {['Amazon', 'Flipkart', 'Meesho', 'Myntra', 'Ajio', 'More Soon'].map(platform => <div key={platform} className="p-3 bg-background rounded-lg border">
                 <span className="font-medium">{platform}</span>
-              </div>
-            ))}
+              </div>)}
           </div>
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>;
 };
-
 export default Dashboard;
