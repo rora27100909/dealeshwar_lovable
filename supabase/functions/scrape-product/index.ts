@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { chromium } from "npm:playwright@1.40.0";
+import { DOMParser } from "https://deno.land/x/deno_dom@v0.1.38/deno-dom-wasm.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,60 +21,69 @@ interface ProductData {
 }
 
 async function scrapeProduct(url: string): Promise<ProductData> {
-  const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage();
+  const headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+  };
   
-  try {
-    await page.goto(url, { waitUntil: 'networkidle' });
-    
-    let productData: ProductData;
-    
-    if (url.includes('amazon.')) {
-      productData = await scrapeAmazon(page, url);
-    } else if (url.includes('flipkart.')) {
-      productData = await scrapeFlipkart(page, url);
-    } else if (url.includes('myntra.')) {
-      productData = await scrapeMyntra(page, url);
-    } else if (url.includes('ajio.')) {
-      productData = await scrapeAjio(page, url);
-    } else if (url.includes('nykaa.')) {
-      productData = await scrapeNykaa(page, url);
-    } else {
-      throw new Error('Unsupported platform');
-    }
-    
-    await browser.close();
-    return productData;
-  } catch (error) {
-    await browser.close();
-    throw error;
+  const response = await fetch(url, { headers });
+  const html = await response.text();
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  
+  if (!doc) {
+    throw new Error('Failed to parse HTML');
+  }
+  
+  if (url.includes('amazon.')) {
+    return scrapeAmazon(doc, url);
+  } else if (url.includes('flipkart.')) {
+    return scrapeFlipkart(doc, url);
+  } else if (url.includes('myntra.')) {
+    return scrapeMyntra(doc, url);
+  } else if (url.includes('ajio.')) {
+    return scrapeAjio(doc, url);
+  } else if (url.includes('nykaa.')) {
+    return scrapeNykaa(doc, url);
+  } else {
+    throw new Error('Unsupported platform');
   }
 }
 
-async function scrapeAmazon(page: any, url: string): Promise<ProductData> {
-  const name = await page.textContent('#productTitle') || '';
-  const priceText = await page.textContent('.a-price-whole') || '0';
+function scrapeAmazon(doc: any, url: string): ProductData {
+  const nameEl = doc.querySelector('#productTitle');
+  const name = nameEl?.textContent?.trim() || '';
+  
+  const priceEl = doc.querySelector('.a-price-whole') || doc.querySelector('.a-price .a-offscreen');
+  const priceText = priceEl?.textContent || '0';
   const price = parseFloat(priceText.replace(/[^\d.]/g, ''));
-  const image = await page.getAttribute('#landingImage', 'src') || '';
-  const brand = await page.textContent('#bylineInfo') || '';
+  
+  const imageEl = doc.querySelector('#landingImage');
+  const image = imageEl?.getAttribute('src') || '';
+  
+  const brandEl = doc.querySelector('#bylineInfo');
+  const brand = brandEl?.textContent?.replace('Brand:', '').trim() || '';
   
   return {
     name: name.trim(),
     price,
     currency: 'INR',
     image_url: image,
-    brand: brand.replace('Brand:', '').trim(),
+    brand: brand,
     platform_name: 'Amazon',
     platform_url: url,
     in_stock: true
   };
 }
 
-async function scrapeFlipkart(page: any, url: string): Promise<ProductData> {
-  const name = await page.textContent('.B_NuCI') || '';
-  const priceText = await page.textContent('._30jeq3') || '0';
+function scrapeFlipkart(doc: any, url: string): ProductData {
+  const nameEl = doc.querySelector('.B_NuCI') || doc.querySelector('h1');
+  const name = nameEl?.textContent?.trim() || '';
+  
+  const priceEl = doc.querySelector('._30jeq3') || doc.querySelector('._1_WHN1');
+  const priceText = priceEl?.textContent || '0';
   const price = parseFloat(priceText.replace(/[^\d.]/g, ''));
-  const image = await page.getAttribute('._396cs4 img', 'src') || '';
+  
+  const imageEl = doc.querySelector('._396cs4 img') || doc.querySelector('img[class*="product"]');
+  const image = imageEl?.getAttribute('src') || '';
   
   return {
     name: name.trim(),
@@ -87,57 +96,78 @@ async function scrapeFlipkart(page: any, url: string): Promise<ProductData> {
   };
 }
 
-async function scrapeMyntra(page: any, url: string): Promise<ProductData> {
-  const name = await page.textContent('.pdp-name') || '';
-  const priceText = await page.textContent('.pdp-price strong') || '0';
+function scrapeMyntra(doc: any, url: string): ProductData {
+  const nameEl = doc.querySelector('.pdp-name') || doc.querySelector('h1');
+  const name = nameEl?.textContent?.trim() || '';
+  
+  const priceEl = doc.querySelector('.pdp-price strong') || doc.querySelector('[class*="price"]');
+  const priceText = priceEl?.textContent || '0';
   const price = parseFloat(priceText.replace(/[^\d.]/g, ''));
-  const image = await page.getAttribute('.image-grid-image', 'src') || '';
-  const brand = await page.textContent('.pdp-title') || '';
+  
+  const imageEl = doc.querySelector('.image-grid-image') || doc.querySelector('img[class*="product"]');
+  const image = imageEl?.getAttribute('src') || '';
+  
+  const brandEl = doc.querySelector('.pdp-title');
+  const brand = brandEl?.textContent?.trim() || '';
   
   return {
     name: name.trim(),
     price,
     currency: 'INR',
     image_url: image,
-    brand: brand.trim(),
+    brand: brand,
     platform_name: 'Myntra',
     platform_url: url,
     in_stock: true
   };
 }
 
-async function scrapeAjio(page: any, url: string): Promise<ProductData> {
-  const name = await page.textContent('.prod-name') || '';
-  const priceText = await page.textContent('.prod-sp') || '0';
+function scrapeAjio(doc: any, url: string): ProductData {
+  const nameEl = doc.querySelector('.prod-name') || doc.querySelector('h1');
+  const name = nameEl?.textContent?.trim() || '';
+  
+  const priceEl = doc.querySelector('.prod-sp') || doc.querySelector('[class*="price"]');
+  const priceText = priceEl?.textContent || '0';
   const price = parseFloat(priceText.replace(/[^\d.]/g, ''));
-  const image = await page.getAttribute('.prod-image img', 'src') || '';
-  const brand = await page.textContent('.prod-brand') || '';
+  
+  const imageEl = doc.querySelector('.prod-image img') || doc.querySelector('img[class*="product"]');
+  const image = imageEl?.getAttribute('src') || '';
+  
+  const brandEl = doc.querySelector('.prod-brand');
+  const brand = brandEl?.textContent?.trim() || '';
   
   return {
     name: name.trim(),
     price,
     currency: 'INR',
     image_url: image,
-    brand: brand.trim(),
+    brand: brand,
     platform_name: 'AJIO',
     platform_url: url,
     in_stock: true
   };
 }
 
-async function scrapeNykaa(page: any, url: string): Promise<ProductData> {
-  const name = await page.textContent('.product-title') || '';
-  const priceText = await page.textContent('.post-card__content-price-offer') || '0';
+function scrapeNykaa(doc: any, url: string): ProductData {
+  const nameEl = doc.querySelector('.product-title') || doc.querySelector('h1');
+  const name = nameEl?.textContent?.trim() || '';
+  
+  const priceEl = doc.querySelector('.post-card__content-price-offer') || doc.querySelector('[class*="price"]');
+  const priceText = priceEl?.textContent || '0';
   const price = parseFloat(priceText.replace(/[^\d.]/g, ''));
-  const image = await page.getAttribute('.product-image img', 'src') || '';
-  const brand = await page.textContent('.brand-name') || '';
+  
+  const imageEl = doc.querySelector('.product-image img') || doc.querySelector('img[class*="product"]');
+  const image = imageEl?.getAttribute('src') || '';
+  
+  const brandEl = doc.querySelector('.brand-name');
+  const brand = brandEl?.textContent?.trim() || '';
   
   return {
     name: name.trim(),
     price,
     currency: 'INR',
     image_url: image,
-    brand: brand.trim(),
+    brand: brand,
     platform_name: 'Nykaa',
     platform_url: url,
     in_stock: true
