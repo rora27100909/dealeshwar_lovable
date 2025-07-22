@@ -30,7 +30,7 @@ serve(async (req) => {
     const { productName, brand, category, productId } = await req.json();
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log(`Searching for product: ${productName} by ${brand}`);
+    console.log(`Searching for product: "${productName}" by "${brand}" (category: "${category}")`);
 
     const searchQueries = [
       `${productName} ${brand || ''}`.trim(),

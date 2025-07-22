@@ -7,8 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, TrendingUp, TrendingDown, Brain, RefreshCw } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, Brain, RefreshCw, BarChart3, ExternalLink } from "lucide-react";
 import Navbar from "@/components/Navbar";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 
 interface Product {
   id: string;
@@ -227,6 +228,22 @@ const ProductHistory = () => {
     return grouped;
   };
 
+  const prepareChartData = () => {
+    const sortedHistory = [...priceHistory].sort((a, b) => 
+      new Date(a.scraped_at).getTime() - new Date(b.scraped_at).getTime()
+    );
+    
+    return sortedHistory.map(item => ({
+      date: new Date(item.scraped_at).toLocaleDateString('en-IN', {
+        month: 'short',
+        day: 'numeric'
+      }),
+      price: item.price,
+      platform: item.platform_name,
+      fullDate: item.scraped_at
+    }));
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -384,26 +401,119 @@ const ProductHistory = () => {
               <CardTitle>Find Better Prices</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">
-                Search for this product across other platforms to find the best deals.
-              </p>
-              <Button 
-                onClick={searchOtherPlatforms}
-                disabled={searchingPlatforms}
-                className="w-full"
-              >
-                {searchingPlatforms ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    Searching...
-                  </>
-                ) : (
-                  "Search Other Platforms"
-                )}
-              </Button>
+              {Object.keys(platformGroups).length > 1 ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-green-600">
+                    <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+                    <span className="text-sm font-medium">Success</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Found prices on other platforms!
+                  </p>
+                  <div className="text-xs text-muted-foreground">
+                    Tracking {Object.keys(platformGroups).length} platforms
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Search for this product across other platforms to find the best deals.
+                  </p>
+                  <Button 
+                    onClick={searchOtherPlatforms}
+                    disabled={searchingPlatforms}
+                    className="w-full"
+                  >
+                    {searchingPlatforms ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Searching...
+                      </>
+                    ) : (
+                      "Search Other Platforms"
+                    )}
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
+
+        {/* Price Chart */}
+        {priceHistory.length > 1 && priceStats && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Price History Chart
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={prepareChartData()}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 12 }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={60}
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12 }}
+                      tickFormatter={(value) => `₹${value}`}
+                    />
+                    <Tooltip 
+                      formatter={(value: any) => [`₹${value}`, 'Price']}
+                      labelFormatter={(label) => `Date: ${label}`}
+                    />
+                    <ReferenceLine 
+                      y={priceStats.min} 
+                      stroke="#22c55e" 
+                      strokeDasharray="5 5" 
+                      label={{ value: "Lowest", position: "left" }}
+                    />
+                    <ReferenceLine 
+                      y={priceStats.max} 
+                      stroke="#ef4444" 
+                      strokeDasharray="5 5" 
+                      label={{ value: "Highest", position: "left" }}
+                    />
+                    <ReferenceLine 
+                      y={priceStats.avg} 
+                      stroke="#f59e0b" 
+                      strokeDasharray="5 5" 
+                      label={{ value: "Average", position: "left" }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="price" 
+                      stroke="#3b82f6" 
+                      strokeWidth={2}
+                      dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                  <span>Lowest: {formatPrice(priceStats.min, priceHistory[0]?.currency || 'INR')}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                  <span>Highest: {formatPrice(priceStats.max, priceHistory[0]?.currency || 'INR')}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                  <span>Average: {formatPrice(priceStats.avg, priceHistory[0]?.currency || 'INR')}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Platform Comparison */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

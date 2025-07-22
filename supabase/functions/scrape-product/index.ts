@@ -49,59 +49,114 @@ async function scrapeProduct(url: string): Promise<ProductData> {
 }
 
 function scrapeAmazon(doc: any, url: string): ProductData {
-  // Multiple selectors for product title
-  const nameSelectors = ['#productTitle', 'h1.a-size-large', '[data-feature-name="title"]', 'h1 span'];
+  console.log('Scraping Amazon product...');
+  
+  // Multiple selectors for product title - More comprehensive
+  const nameSelectors = [
+    '#productTitle', 
+    'h1.a-size-large', 
+    '[data-feature-name="title"]', 
+    'h1 span',
+    '.product-title',
+    '.a-size-large.product-title-word-break',
+    'span[data-automation-id="product-title"]'
+  ];
   let name = '';
   for (const selector of nameSelectors) {
     const el = doc.querySelector(selector);
     if (el?.textContent?.trim()) {
       name = el.textContent.trim();
+      console.log(`Found name with selector ${selector}: ${name}`);
       break;
     }
   }
   
-  // Multiple selectors for price
+  // Enhanced price selectors with more comprehensive extraction
   const priceSelectors = [
-    '.a-price-whole', 
+    '.a-price.a-text-price .a-offscreen',
+    '.a-price-current .a-offscreen', 
     '.a-price .a-offscreen', 
+    '.a-price-whole',
     '[data-a-price-whole]',
     '.a-offscreen[data-a-price-whole]',
-    '.a-price-current .a-offscreen',
-    '.a-color-price'
+    '.a-color-price',
+    '.a-price.a-text-normal .a-offscreen',
+    '.a-price-range .a-offscreen',
+    '.a-text-strike .a-offscreen'
   ];
   let price = 0;
   for (const selector of priceSelectors) {
     const el = doc.querySelector(selector);
     if (el?.textContent) {
-      const priceText = el.textContent.replace(/[^\d.]/g, '');
+      const priceText = el.textContent.replace(/[₹,\s]/g, '').replace(/[^\d.]/g, '');
+      console.log(`Price text from ${selector}: "${el.textContent}" -> "${priceText}"`);
       if (priceText && parseFloat(priceText) > 0) {
         price = parseFloat(priceText);
+        console.log(`Found price: ${price}`);
         break;
       }
     }
   }
   
+  // If no price found, try alternative approach
+  if (price === 0) {
+    const allPriceElements = doc.querySelectorAll('[class*="price"], [id*="price"]');
+    for (const el of allPriceElements) {
+      if (el?.textContent) {
+        const priceText = el.textContent.replace(/[₹,\s]/g, '').replace(/[^\d.]/g, '');
+        if (priceText && parseFloat(priceText) > 0) {
+          price = parseFloat(priceText);
+          console.log(`Found price via fallback: ${price}`);
+          break;
+        }
+      }
+    }
+  }
+  
   // Multiple selectors for image
-  const imageSelectors = ['#landingImage', '#imgTagWrapperId img', '[data-old-hires]', '.a-dynamic-image'];
+  const imageSelectors = [
+    '#landingImage', 
+    '#imgTagWrapperId img', 
+    '[data-old-hires]', 
+    '.a-dynamic-image',
+    '.a-image-wrapper img',
+    '#imageBlock img'
+  ];
   let image = '';
   for (const selector of imageSelectors) {
     const el = doc.querySelector(selector);
     if (el?.getAttribute('src') || el?.getAttribute('data-old-hires')) {
       image = el.getAttribute('src') || el.getAttribute('data-old-hires') || '';
-      if (image) break;
+      if (image && !image.includes('data:image')) {
+        console.log(`Found image: ${image}`);
+        break;
+      }
     }
   }
   
-  // Multiple selectors for brand
-  const brandSelectors = ['#bylineInfo', '[data-brand]', '.a-size-base.po-brand', 'a[data-brand]'];
+  // Enhanced brand selectors
+  const brandSelectors = [
+    '#bylineInfo', 
+    '[data-brand]', 
+    '.a-size-base.po-brand', 
+    'a[data-brand]',
+    '.a-row .a-link-normal',
+    '#brand',
+    '.brand'
+  ];
   let brand = '';
   for (const selector of brandSelectors) {
     const el = doc.querySelector(selector);
     if (el?.textContent?.trim()) {
       brand = el.textContent.replace(/^(Brand:|Visit the|by)\s*/i, '').trim();
-      if (brand) break;
+      if (brand && brand.length > 1) {
+        console.log(`Found brand: ${brand}`);
+        break;
+      }
     }
   }
+  
+  console.log(`Amazon scraping result: name="${name}", price=${price}, brand="${brand}"`);
   
   return {
     name: name.trim(),
