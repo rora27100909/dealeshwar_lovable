@@ -49,18 +49,59 @@ async function scrapeProduct(url: string): Promise<ProductData> {
 }
 
 function scrapeAmazon(doc: any, url: string): ProductData {
-  const nameEl = doc.querySelector('#productTitle');
-  const name = nameEl?.textContent?.trim() || '';
+  // Multiple selectors for product title
+  const nameSelectors = ['#productTitle', 'h1.a-size-large', '[data-feature-name="title"]', 'h1 span'];
+  let name = '';
+  for (const selector of nameSelectors) {
+    const el = doc.querySelector(selector);
+    if (el?.textContent?.trim()) {
+      name = el.textContent.trim();
+      break;
+    }
+  }
   
-  const priceEl = doc.querySelector('.a-price-whole') || doc.querySelector('.a-price .a-offscreen');
-  const priceText = priceEl?.textContent || '0';
-  const price = parseFloat(priceText.replace(/[^\d.]/g, ''));
+  // Multiple selectors for price
+  const priceSelectors = [
+    '.a-price-whole', 
+    '.a-price .a-offscreen', 
+    '[data-a-price-whole]',
+    '.a-offscreen[data-a-price-whole]',
+    '.a-price-current .a-offscreen',
+    '.a-color-price'
+  ];
+  let price = 0;
+  for (const selector of priceSelectors) {
+    const el = doc.querySelector(selector);
+    if (el?.textContent) {
+      const priceText = el.textContent.replace(/[^\d.]/g, '');
+      if (priceText && parseFloat(priceText) > 0) {
+        price = parseFloat(priceText);
+        break;
+      }
+    }
+  }
   
-  const imageEl = doc.querySelector('#landingImage');
-  const image = imageEl?.getAttribute('src') || '';
+  // Multiple selectors for image
+  const imageSelectors = ['#landingImage', '#imgTagWrapperId img', '[data-old-hires]', '.a-dynamic-image'];
+  let image = '';
+  for (const selector of imageSelectors) {
+    const el = doc.querySelector(selector);
+    if (el?.getAttribute('src') || el?.getAttribute('data-old-hires')) {
+      image = el.getAttribute('src') || el.getAttribute('data-old-hires') || '';
+      if (image) break;
+    }
+  }
   
-  const brandEl = doc.querySelector('#bylineInfo');
-  const brand = brandEl?.textContent?.replace('Brand:', '').trim() || '';
+  // Multiple selectors for brand
+  const brandSelectors = ['#bylineInfo', '[data-brand]', '.a-size-base.po-brand', 'a[data-brand]'];
+  let brand = '';
+  for (const selector of brandSelectors) {
+    const el = doc.querySelector(selector);
+    if (el?.textContent?.trim()) {
+      brand = el.textContent.replace(/^(Brand:|Visit the|by)\s*/i, '').trim();
+      if (brand) break;
+    }
+  }
   
   return {
     name: name.trim(),
@@ -235,6 +276,18 @@ serve(async (req) => {
     }
 
     console.log('Product scraped and saved successfully:', product.id);
+
+    // Auto-trigger cross-platform search
+    try {
+      await supabase.functions.invoke('search-platforms', {
+        body: {
+          productName: productData.name,
+          brand: productData.brand
+        }
+      });
+    } catch (searchError) {
+      console.log('Cross-platform search failed:', searchError.message);
+    }
 
     return new Response(
       JSON.stringify({ 

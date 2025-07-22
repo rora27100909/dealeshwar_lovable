@@ -24,6 +24,15 @@ const ProductUrlForm = () => {
       });
       return;
     }
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to start tracking products",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsLoading(true);
     try {
       const {
@@ -32,7 +41,7 @@ const ProductUrlForm = () => {
       } = await supabase.functions.invoke('scrape-product', {
         body: {
           url: url.trim(),
-          user_id: user?.id || 'temp-user-id'
+          user_id: user.id
         }
       });
       if (error) throw error;

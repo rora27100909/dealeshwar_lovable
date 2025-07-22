@@ -105,7 +105,15 @@ Consider factors like:
 
     let recommendation;
     try {
-      recommendation = JSON.parse(aiResponse);
+      // Clean the AI response by removing markdown code blocks if present
+      let cleanResponse = aiResponse.trim();
+      if (cleanResponse.startsWith('```json')) {
+        cleanResponse = cleanResponse.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (cleanResponse.startsWith('```')) {
+        cleanResponse = cleanResponse.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+      
+      recommendation = JSON.parse(cleanResponse);
     } catch (parseError) {
       console.error('Failed to parse AI response:', aiResponse);
       // Fallback recommendation

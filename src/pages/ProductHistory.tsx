@@ -66,6 +66,23 @@ const ProductHistory = () => {
     fetchProductData();
   }, [user, productId]);
 
+  // Auto-trigger cross-platform search when product is loaded
+  useEffect(() => {
+    if (product && priceHistory.length > 0 && !searchingPlatforms) {
+      const platforms = [...new Set(priceHistory.map(h => h.platform_name))];
+      if (platforms.length === 1) { // Only one platform, search others
+        searchOtherPlatforms();
+      }
+    }
+  }, [product, priceHistory]);
+
+  // Auto-trigger AI recommendation when price stats are available
+  useEffect(() => {
+    if (product && priceStats && !aiRecommendation && !loadingRecommendation) {
+      getAIRecommendation();
+    }
+  }, [product, priceStats]);
+
   const fetchProductData = async () => {
     if (!productId) return;
 
