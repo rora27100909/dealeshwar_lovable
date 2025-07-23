@@ -94,7 +94,7 @@ const ProductHistory = () => {
         .select("*")
         .eq("id", productId)
         .eq("user_id", user?.id)
-        .single();
+        .maybeSingle();
 
       if (productError) throw productError;
       setProduct(productData);
