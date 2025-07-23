@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +11,7 @@ import { Search, TrendingDown, Bell, BarChart3 } from "lucide-react";
 const ProductUrlForm = () => {
   const [url, setUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
   const {
     user
   } = useAuth();
@@ -48,9 +50,11 @@ const ProductUrlForm = () => {
       if (data.success) {
         toast({
           title: "Product Added Successfully",
-          description: `${data.product.product_name} is now being tracked!`
+          description: `${data.product.product_name || 'Product'} is now being tracked!`
         });
         setUrl("");
+        // Redirect to price history page for the new product
+        navigate(`/products/${data.product.id}/history`);
       } else {
         throw new Error(data.error || 'Failed to scrape product');
       }

@@ -50,16 +50,17 @@ async function scrapeProduct(url: string): Promise<ProductData> {
 
 function scrapeAmazon(doc: any, url: string): ProductData {
   console.log('Scraping Amazon product...');
+  console.log('HTML snippet:', doc.documentElement.innerHTML.substring(0, 1000));
   
-  // Multiple selectors for product title - More comprehensive
+  // Enhanced selectors for product title
   const nameSelectors = [
     '#productTitle', 
-    'h1.a-size-large', 
-    '[data-feature-name="title"]', 
+    'h1 span#productTitle',
+    '.a-size-large.a-size-base-plus.a-color-base.a-text-normal',
+    '[data-automation-id="product-title"]',
+    'h1.a-size-large',
     'h1 span',
-    '.product-title',
-    '.a-size-large.product-title-word-break',
-    'span[data-automation-id="product-title"]'
+    '.product-title'
   ];
   let name = '';
   for (const selector of nameSelectors) {
@@ -71,20 +72,28 @@ function scrapeAmazon(doc: any, url: string): ProductData {
     }
   }
   
-  // Enhanced price selectors with more comprehensive extraction
+  // Debug: log all elements that might contain title
+  if (!name) {
+    console.log('No title found, checking all h1 elements:');
+    const allH1 = doc.querySelectorAll('h1');
+    for (let i = 0; i < allH1.length; i++) {
+      console.log(`H1 ${i}: ${allH1[i]?.textContent?.trim()}`);
+    }
+  }
+  
+  // Enhanced price selectors - try simple selectors first
   const priceSelectors = [
+    'span.a-price-whole',
+    '.a-price .a-offscreen',
+    '.a-price-current .a-offscreen',
     '.a-price.a-text-price .a-offscreen',
-    '.a-price-current .a-offscreen', 
-    '.a-price .a-offscreen', 
     '.a-price-whole',
     '[data-a-price-whole]',
-    '.a-offscreen[data-a-price-whole]',
     '.a-color-price',
-    '.a-price.a-text-normal .a-offscreen',
-    '.a-price-range .a-offscreen',
-    '.a-text-strike .a-offscreen'
+    '.a-price.a-text-normal .a-offscreen'
   ];
   let price = 0;
+  
   for (const selector of priceSelectors) {
     const el = doc.querySelector(selector);
     if (el?.textContent) {
@@ -98,16 +107,24 @@ function scrapeAmazon(doc: any, url: string): ProductData {
     }
   }
   
-  // If no price found, try alternative approach
+  // Debug: if no price found, check all price-related elements
   if (price === 0) {
-    const allPriceElements = doc.querySelectorAll('[class*="price"], [id*="price"]');
-    for (const el of allPriceElements) {
-      if (el?.textContent) {
-        const priceText = el.textContent.replace(/[₹,\s]/g, '').replace(/[^\d.]/g, '');
-        if (priceText && parseFloat(priceText) > 0) {
+    console.log('No price found with selectors, checking all price elements:');
+    const priceElements = doc.querySelectorAll('[class*="price"]');
+    for (let i = 0; i < Math.min(priceElements.length, 10); i++) {
+      console.log(`Price element ${i}: ${priceElements[i]?.textContent?.trim()}`);
+    }
+    
+    // Try to extract from any element containing currency symbols
+    const currencyElements = doc.querySelectorAll('*');
+    for (const el of currencyElements) {
+      if (el?.textContent && /[₹$€£][\d,]+/.test(el.textContent)) {
+        const priceMatch = el.textContent.match(/[₹$€£]([\d,]+(?:\.\d{2})?)/);
+        if (priceMatch) {
+          const priceText = priceMatch[1].replace(/,/g, '');
           price = parseFloat(priceText);
-          console.log(`Found price via fallback: ${price}`);
-          break;
+          console.log(`Found price via currency search: ${price} from ${el.textContent}`);
+          if (price > 0) break;
         }
       }
     }

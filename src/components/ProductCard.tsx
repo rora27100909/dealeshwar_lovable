@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { TrendingDown, TrendingUp, Minus, ExternalLink, Bell } from "lucide-react";
+import { TrendingDown, TrendingUp, Minus, ExternalLink, Bell, Trash2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 interface ProductCardProps {
@@ -25,6 +25,7 @@ interface ProductCardProps {
   };
   onSetAlert?: (productId: string) => void;
   onViewHistory?: (productId: string) => void;
+  onDelete?: (productId: string) => void;
 }
 
 const ProductCard = ({ 
@@ -32,7 +33,8 @@ const ProductCard = ({
   currentPrice, 
   priceChange, 
   onSetAlert, 
-  onViewHistory 
+  onViewHistory,
+  onDelete 
 }: ProductCardProps) => {
   const getPriceChangeIcon = () => {
     if (!priceChange) return <Minus className="h-4 w-4" />;
@@ -129,6 +131,15 @@ const ProductCard = ({
               onClick={() => onSetAlert(product.id)}
             >
               <Bell className="h-4 w-4" />
+            </Button>
+          )}
+          {onDelete && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onDelete(product.id)}
+            >
+              <Trash2 className="h-4 w-4" />
             </Button>
           )}
         </div>

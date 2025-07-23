@@ -178,6 +178,30 @@ const Products = () => {
                       description: "Price alerts will be available soon!",
                     });
                   }}
+                  onDelete={async (productId) => {
+                    try {
+                      const { error } = await supabase
+                        .from('products')
+                        .delete()
+                        .eq('id', productId);
+                      
+                      if (error) throw error;
+                      
+                      toast({
+                        title: "Product Deleted",
+                        description: "Product has been removed from tracking",
+                      });
+                      
+                      // Refresh the products list
+                      fetchProducts();
+                    } catch (error) {
+                      toast({
+                        title: "Error",
+                        description: "Failed to delete product",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
                 />
               );
             })}
