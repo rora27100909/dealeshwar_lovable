@@ -49,3 +49,6 @@ verify_jwt = false
 
 [functions.google-shopping-search]
 verify_jwt = false
+
+[functions.daily-price-scraper]
+verify_jwt = false
