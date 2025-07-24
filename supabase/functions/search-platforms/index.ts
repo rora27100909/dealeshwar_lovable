@@ -198,7 +198,37 @@ serve(async (req) => {
 
     console.log(`Starting cross-platform search for: "${productName}" by "${brand}"`);
 
-    if (!productName || productName.trim().length === 0) {
+    // If productId is provided but productName is empty, try to get product data from database
+    let searchName = productName;
+    let searchBrand = brand;
+    
+    if ((!productName || productName.trim().length === 0) && productId) {
+      console.log(`Product name empty, fetching from database for ID: ${productId}`);
+      const { data: productData, error } = await supabase
+        .from('products')
+        .select('product_name, brand, original_url')
+        .eq('id', productId)
+        .single();
+      
+      if (productData) {
+        searchName = productData.product_name;
+        searchBrand = productData.brand;
+        
+        // If still no name, try to extract from URL
+        if (!searchName && productData.original_url) {
+          if (productData.original_url.includes('/dp/')) {
+            const urlParts = productData.original_url.split('/');
+            const dpIndex = urlParts.findIndex(part => part === 'dp');
+            if (dpIndex > 0 && urlParts[dpIndex - 1]) {
+              searchName = urlParts[dpIndex - 1].replace(/-/g, ' ');
+              console.log(`Extracted name from URL: ${searchName}`);
+            }
+          }
+        }
+      }
+    }
+
+    if (!searchName || searchName.trim().length === 0) {
       return new Response(
         JSON.stringify({ 
           results: [],
@@ -210,13 +240,13 @@ serve(async (req) => {
     }
 
     // Clean and prepare search queries
-    const cleanedName = cleanProductName(productName);
-    const brandName = brand?.replace(/^(Visit the|by)\s*/i, '').trim() || '';
+    const cleanedName = cleanProductName(searchName);
+    const brandName = searchBrand?.replace(/^(Visit the|by)\s*/i, '').trim() || '';
     
     const searchQueries = [
       cleanedName,
       `${brandName} ${cleanedName}`.trim(),
-      productName.split('|')[0].trim() // Take first part before pipe
+      searchName.split('|')[0].trim() // Take first part before pipe
     ].filter(q => q.length > 3);
 
     console.log(`Search queries: ${JSON.stringify(searchQueries)}`);
@@ -226,7 +256,7 @@ serve(async (req) => {
     // Search each platform with different queries
     for (const platform of platforms) {
       for (const query of searchQueries.slice(0, 2)) { // Limit to 2 queries per platform
-        const platformResults = await searchPlatform(platform, query, productName);
+        const platformResults = await searchPlatform(platform, query, searchName);
         allResults.push(...platformResults);
       }
     }

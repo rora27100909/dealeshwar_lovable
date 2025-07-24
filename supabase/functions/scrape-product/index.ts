@@ -21,8 +21,28 @@ interface ProductData {
 }
 
 async function scrapeProduct(url: string): Promise<ProductData> {
+  console.log(`Scraping product from: ${url}`);
+  
+  // Extract product info from URL as fallback
+  let fallbackName = '';
+  if (url.includes('/dp/') && url.includes('amazon.')) {
+    const urlParts = url.split('/');
+    const dpIndex = urlParts.findIndex(part => part === 'dp');
+    if (dpIndex > 0 && urlParts[dpIndex - 1]) {
+      fallbackName = urlParts[dpIndex - 1].replace(/-/g, ' ');
+    }
+  }
+  
   const headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Connection': 'keep-alive',
+    'Upgrade-Insecure-Requests': '1',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none'
   };
   
   const response = await fetch(url, { headers });
@@ -34,7 +54,7 @@ async function scrapeProduct(url: string): Promise<ProductData> {
   }
   
   if (url.includes('amazon.')) {
-    return scrapeAmazon(doc, url);
+    return scrapeAmazon(doc, url, fallbackName);
   } else if (url.includes('flipkart.')) {
     return scrapeFlipkart(doc, url);
   } else if (url.includes('myntra.')) {
@@ -48,7 +68,7 @@ async function scrapeProduct(url: string): Promise<ProductData> {
   }
 }
 
-function scrapeAmazon(doc: any, url: string): ProductData {
+function scrapeAmazon(doc: any, url: string, fallbackName: string = ''): ProductData {
   console.log('Scraping Amazon product...');
   console.log('HTML snippet:', doc.documentElement.innerHTML.substring(0, 1000));
   
@@ -173,10 +193,16 @@ function scrapeAmazon(doc: any, url: string): ProductData {
     }
   }
   
+  // Use fallback name if scraping failed
+  if (!name && fallbackName) {
+    name = fallbackName;
+    console.log(`Using fallback name: ${name}`);
+  }
+  
   console.log(`Amazon scraping result: name="${name}", price=${price}, brand="${brand}"`);
   
   return {
-    name: name.trim(),
+    name: name.trim() || fallbackName || 'Unknown Product',
     price,
     currency: 'INR',
     image_url: image,
